@@ -412,7 +412,7 @@ Optional QuickSight adds ~$24/month for author access.
 ## Cleanup
 Run the following terraform command to destroy all the infrastructure.
 
-terraform destroy (from the infrastructure directory)
+**terraform destroy** (from the infrastructure directory)
 
 ## Read More
 This repository is associated with the following blog https://darryl-ruggles.cloud/building-a-serverless-sales-analytics-platform-with-ai-insights-for-under-10month
