@@ -1,0 +1,12 @@
+# Lambda deployment packages
+functions/*.zip
+*.zip
+
+# Terraform state files
+*.tfstate
+*.tfstate.backup
+**/.terraform/**
+**/.terraform.lock*
+
+# Build artifacts
+**/build/

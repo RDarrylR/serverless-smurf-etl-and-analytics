@@ -1,0 +1,390 @@
+{
+  "Comment": "Daily Analysis Workflow - Aggregates metrics across all stores with Bedrock AI insights",
+  "StartAt": "GetStoreSummaries",
+  "States": {
+    "GetStoreSummaries": {
+      "Type": "Task",
+      "Resource": "${get_store_summaries_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date"
+      },
+      "ResultPath": "$.storeSummariesResult",
+      "Next": "CheckStoreSummaries",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "CheckStoreSummaries": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.storeSummariesResult.store_count",
+          "NumericEquals": 0,
+          "Next": "NoDataAvailable"
+        }
+      ],
+      "Default": "CalcCompanyMetrics"
+    },
+    "NoDataAvailable": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_alerts_topic_arn}",
+        "Subject": "Daily Analysis - No Data Available",
+        "Message.$": "States.Format('Daily analysis triggered for {} but no store data was found.', $.date)"
+      },
+      "Next": "FailNoData"
+    },
+    "FailNoData": {
+      "Type": "Fail",
+      "Error": "NoDataAvailable",
+      "Cause": "No store summaries found for the specified date"
+    },
+    "CalcCompanyMetrics": {
+      "Type": "Task",
+      "Resource": "${calc_company_metrics_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "store_summaries.$": "$.storeSummariesResult.store_summaries"
+      },
+      "ResultPath": "$.companyResult",
+      "Next": "CalcProductMetrics",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "CalcProductMetrics": {
+      "Type": "Task",
+      "Resource": "${calc_product_metrics_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "store_summaries.$": "$.storeSummariesResult.store_summaries",
+        "company_metrics.$": "$.companyResult.company_metrics"
+      },
+      "ResultPath": "$.productResult",
+      "Next": "BedrockAnalysis",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "BedrockAnalysis": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "DetectAnomalies",
+          "States": {
+            "DetectAnomalies": {
+              "Type": "Task",
+              "Resource": "${detect_anomalies_lambda_arn}",
+              "Parameters": {
+                "date.$": "$.date",
+                "store_summaries.$": "$.storeSummariesResult.store_summaries",
+                "company_metrics.$": "$.productResult.company_metrics"
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed", "ThrottlingException", "ServiceQuotaExceededException"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "AnomalyDetectionFailed"
+                }
+              ],
+              "End": true
+            },
+            "AnomalyDetectionFailed": {
+              "Type": "Pass",
+              "Parameters": {
+                "anomalies": [],
+                "error.$": "$.error.Cause"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "AnalyzeTrends",
+          "States": {
+            "AnalyzeTrends": {
+              "Type": "Task",
+              "Resource": "${analyze_trends_lambda_arn}",
+              "Parameters": {
+                "date.$": "$.date",
+                "store_summaries.$": "$.storeSummariesResult.store_summaries",
+                "company_metrics.$": "$.productResult.company_metrics",
+                "product_metrics.$": "$.productResult.product_metrics"
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed", "ThrottlingException", "ServiceQuotaExceededException"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "TrendAnalysisFailed"
+                }
+              ],
+              "End": true
+            },
+            "TrendAnalysisFailed": {
+              "Type": "Pass",
+              "Parameters": {
+                "trends": [],
+                "error.$": "$.error.Cause"
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.bedrockParallelResults",
+      "Next": "GenerateRecommendations"
+    },
+    "GenerateRecommendations": {
+      "Type": "Task",
+      "Resource": "${generate_recommendations_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "anomalies.$": "$.bedrockParallelResults[0].anomalies",
+        "trends.$": "$.bedrockParallelResults[1].trends",
+        "company_metrics.$": "$.productResult.company_metrics"
+      },
+      "ResultPath": "$.recommendationsResult",
+      "Next": "CombineInsights",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed", "ThrottlingException", "ServiceQuotaExceededException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.recommendationsError",
+          "Next": "CombineInsightsWithPartialData"
+        }
+      ]
+    },
+    "CombineInsightsWithPartialData": {
+      "Type": "Task",
+      "Resource": "${combine_insights_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "anomalies_result.$": "$.bedrockParallelResults[0]",
+        "trends_result.$": "$.bedrockParallelResults[1]",
+        "recommendations_result": {
+          "recommendations": [],
+          "error": "Recommendation generation failed after retries"
+        },
+        "company_metrics.$": "$.productResult.company_metrics"
+      },
+      "ResultPath": "$.insightsResult",
+      "Next": "CheckForBedrockErrors",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "CombineInsights": {
+      "Type": "Task",
+      "Resource": "${combine_insights_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "anomalies_result.$": "$.bedrockParallelResults[0]",
+        "trends_result.$": "$.bedrockParallelResults[1]",
+        "recommendations_result.$": "$.recommendationsResult",
+        "company_metrics.$": "$.productResult.company_metrics"
+      },
+      "ResultPath": "$.insightsResult",
+      "Next": "CheckForBedrockErrors",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "CheckForBedrockErrors": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.insightsResult.has_errors",
+          "BooleanEquals": true,
+          "Next": "SendBedrockErrorAlert"
+        }
+      ],
+      "Default": "GenerateReport"
+    },
+    "SendBedrockErrorAlert": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_alerts_topic_arn}",
+        "Subject": "Daily Analysis - Bedrock Partial Failure",
+        "Message.$": "States.Format('Daily analysis for {} completed with partial Bedrock failures. Some AI insights may be missing. Check CloudWatch logs for details.', $.date)"
+      },
+      "ResultPath": "$.alertResult",
+      "Next": "GenerateReport"
+    },
+    "GenerateReport": {
+      "Type": "Task",
+      "Resource": "${generate_report_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "company_metrics.$": "$.productResult.company_metrics",
+        "product_metrics.$": "$.productResult.product_metrics",
+        "insights.$": "$.insightsResult.insights"
+      },
+      "ResultPath": "$.reportResult",
+      "Next": "SendDailyReport",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "SendDailyReport": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_daily_report_topic_arn}",
+        "Subject.$": "$.reportResult.subject",
+        "Message.$": "$.reportResult.message"
+      },
+      "ResultPath": "$.snsResult",
+      "Next": "ExportToQuickSight"
+    },
+    "ExportToQuickSight": {
+      "Type": "Task",
+      "Resource": "${export_to_quicksight_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.date",
+        "days": 30
+      },
+      "ResultPath": "$.exportResult",
+      "Next": "Success",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.exportError",
+          "Next": "ExportFailed"
+        }
+      ]
+    },
+    "ExportFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_alerts_topic_arn}",
+        "Subject": "QuickSight Export Failed",
+        "Message.$": "States.Format('QuickSight export failed for date: {}. Daily report was sent successfully. Check CloudWatch logs for details.', $.date)"
+      },
+      "Next": "Success"
+    },
+    "HandleError": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_alerts_topic_arn}",
+        "Subject": "Daily Analysis Failed",
+        "Message.$": "States.Format('Daily analysis workflow failed for date: {}', $.date)"
+      },
+      "Next": "FailWithError"
+    },
+    "FailWithError": {
+      "Type": "Fail",
+      "Error": "DailyAnalysisFailed",
+      "Cause": "An error occurred during daily analysis"
+    },
+    "Success": {
+      "Type": "Succeed"
+    }
+  }
+}

@@ -1,0 +1,328 @@
+{
+  "Name": "Sales Data Platform Dashboard",
+  "Sheets": [
+    {
+      "SheetId": "executive-summary",
+      "Name": "Executive Summary",
+      "Description": "High-level overview of company performance",
+      "Visuals": [
+        {
+          "VisualId": "kpi-total-sales",
+          "Type": "KPI",
+          "Title": "Total Sales",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Measure": "total_sales",
+          "Aggregation": "SUM"
+        },
+        {
+          "VisualId": "kpi-transaction-count",
+          "Type": "KPI",
+          "Title": "Total Transactions",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Measure": "transaction_count",
+          "Aggregation": "SUM"
+        },
+        {
+          "VisualId": "kpi-avg-transaction",
+          "Type": "KPI",
+          "Title": "Avg Transaction Value",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Measure": "avg_transaction",
+          "Aggregation": "AVG"
+        },
+        {
+          "VisualId": "kpi-store-count",
+          "Type": "KPI",
+          "Title": "Active Stores",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Dimension": "store_id",
+          "Aggregation": "COUNT_DISTINCT"
+        },
+        {
+          "VisualId": "chart-sales-trend",
+          "Type": "LINE",
+          "Title": "Daily Sales Trend",
+          "DatasetId": "sales-store-summaries-dataset",
+          "XAxis": "date",
+          "YAxis": [
+            {"Field": "total_sales", "Aggregation": "SUM"}
+          ]
+        },
+        {
+          "VisualId": "chart-sales-by-store",
+          "Type": "BAR",
+          "Title": "Sales by Store",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Category": "store_id",
+          "Values": [
+            {"Field": "total_sales", "Aggregation": "SUM"}
+          ],
+          "SortOrder": "DESC"
+        },
+        {
+          "VisualId": "chart-payment-breakdown",
+          "Type": "PIE",
+          "Title": "Payment Method Distribution",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Values": [
+            {"Field": "payment_cash", "Aggregation": "SUM", "Label": "Cash"},
+            {"Field": "payment_credit", "Aggregation": "SUM", "Label": "Credit"},
+            {"Field": "payment_debit", "Aggregation": "SUM", "Label": "Debit"},
+            {"Field": "payment_gift_card", "Aggregation": "SUM", "Label": "Gift Card"}
+          ]
+        }
+      ]
+    },
+    {
+      "SheetId": "store-performance",
+      "Name": "Store Performance",
+      "Description": "Detailed store-level analysis",
+      "Visuals": [
+        {
+          "VisualId": "table-store-metrics",
+          "Type": "TABLE",
+          "Title": "Store Performance Summary",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Columns": [
+            {"Field": "store_id", "Label": "Store"},
+            {"Field": "total_sales", "Aggregation": "SUM", "Label": "Total Sales", "Format": "CURRENCY"},
+            {"Field": "transaction_count", "Aggregation": "SUM", "Label": "Transactions"},
+            {"Field": "avg_transaction", "Aggregation": "AVG", "Label": "Avg Transaction", "Format": "CURRENCY"},
+            {"Field": "item_count", "Aggregation": "SUM", "Label": "Items Sold"}
+          ],
+          "SortBy": "total_sales",
+          "SortOrder": "DESC"
+        },
+        {
+          "VisualId": "chart-store-sales-heatmap",
+          "Type": "HEAT_MAP",
+          "Title": "Store Sales by Day",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Rows": "store_id",
+          "Columns": "date",
+          "Values": [
+            {"Field": "total_sales", "Aggregation": "SUM"}
+          ]
+        },
+        {
+          "VisualId": "chart-store-comparison",
+          "Type": "BAR",
+          "Title": "Store Comparison - Sales vs Transactions",
+          "DatasetId": "sales-store-summaries-dataset",
+          "Category": "store_id",
+          "Values": [
+            {"Field": "total_sales", "Aggregation": "SUM", "Label": "Sales"},
+            {"Field": "transaction_count", "Aggregation": "SUM", "Label": "Transactions", "SecondaryAxis": true}
+          ]
+        },
+        {
+          "VisualId": "chart-store-trend",
+          "Type": "LINE",
+          "Title": "Store Sales Trend",
+          "DatasetId": "sales-store-summaries-dataset",
+          "XAxis": "date",
+          "YAxis": [
+            {"Field": "total_sales", "Aggregation": "SUM"}
+          ],
+          "Color": "store_id"
+        }
+      ]
+    },
+    {
+      "SheetId": "product-analysis",
+      "Name": "Product Analysis",
+      "Description": "Product performance and trends",
+      "Visuals": [
+        {
+          "VisualId": "table-top-products",
+          "Type": "TABLE",
+          "Title": "Top Products by Revenue",
+          "DatasetId": "sales-top-products-dataset",
+          "Columns": [
+            {"Field": "sku", "Label": "SKU"},
+            {"Field": "name", "Label": "Product Name"},
+            {"Field": "units_sold", "Aggregation": "SUM", "Label": "Units Sold"},
+            {"Field": "revenue", "Aggregation": "SUM", "Label": "Revenue", "Format": "CURRENCY"}
+          ],
+          "SortBy": "revenue",
+          "SortOrder": "DESC",
+          "TopN": 20
+        },
+        {
+          "VisualId": "chart-product-revenue",
+          "Type": "BAR",
+          "Title": "Top 10 Products by Revenue",
+          "DatasetId": "sales-top-products-dataset",
+          "Category": "name",
+          "Values": [
+            {"Field": "revenue", "Aggregation": "SUM"}
+          ],
+          "TopN": 10,
+          "SortOrder": "DESC"
+        },
+        {
+          "VisualId": "chart-product-by-store",
+          "Type": "STACKED_BAR",
+          "Title": "Product Sales by Store",
+          "DatasetId": "sales-top-products-dataset",
+          "Category": "name",
+          "Values": [
+            {"Field": "revenue", "Aggregation": "SUM"}
+          ],
+          "Color": "store_id",
+          "TopN": 10
+        },
+        {
+          "VisualId": "chart-units-vs-revenue",
+          "Type": "SCATTER",
+          "Title": "Units Sold vs Revenue",
+          "DatasetId": "sales-top-products-dataset",
+          "XAxis": {"Field": "units_sold", "Aggregation": "SUM"},
+          "YAxis": {"Field": "revenue", "Aggregation": "SUM"},
+          "Size": {"Field": "revenue", "Aggregation": "SUM"},
+          "GroupBy": "name"
+        }
+      ]
+    },
+    {
+      "SheetId": "ai-insights",
+      "Name": "AI Insights",
+      "Description": "Bedrock-powered anomalies, trends, and recommendations",
+      "Visuals": [
+        {
+          "VisualId": "kpi-anomaly-count",
+          "Type": "KPI",
+          "Title": "Total Anomalies",
+          "DatasetId": "sales-anomalies-dataset",
+          "Dimension": "title",
+          "Aggregation": "COUNT"
+        },
+        {
+          "VisualId": "kpi-trend-count",
+          "Type": "KPI",
+          "Title": "Trends Identified",
+          "DatasetId": "sales-trends-dataset",
+          "Dimension": "title",
+          "Aggregation": "COUNT"
+        },
+        {
+          "VisualId": "kpi-recommendation-count",
+          "Type": "KPI",
+          "Title": "Recommendations",
+          "DatasetId": "sales-recommendations-dataset",
+          "Dimension": "title",
+          "Aggregation": "COUNT"
+        },
+        {
+          "VisualId": "table-anomalies",
+          "Type": "TABLE",
+          "Title": "Recent Anomalies",
+          "DatasetId": "sales-anomalies-dataset",
+          "Columns": [
+            {"Field": "date", "Label": "Date"},
+            {"Field": "severity", "Label": "Severity"},
+            {"Field": "store_id", "Label": "Store"},
+            {"Field": "title", "Label": "Issue"},
+            {"Field": "deviation_percent", "Label": "Deviation %", "Format": "PERCENT"}
+          ],
+          "SortBy": "date",
+          "SortOrder": "DESC"
+        },
+        {
+          "VisualId": "chart-anomalies-by-severity",
+          "Type": "BAR",
+          "Title": "Anomalies by Severity",
+          "DatasetId": "sales-anomalies-dataset",
+          "Category": "severity",
+          "Values": [
+            {"Field": "title", "Aggregation": "COUNT"}
+          ]
+        },
+        {
+          "VisualId": "table-trends",
+          "Type": "TABLE",
+          "Title": "Identified Trends",
+          "DatasetId": "sales-trends-dataset",
+          "Columns": [
+            {"Field": "date", "Label": "Date"},
+            {"Field": "trend_type", "Label": "Type"},
+            {"Field": "significance", "Label": "Significance"},
+            {"Field": "title", "Label": "Trend"},
+            {"Field": "affected_items", "Label": "Affected Items"}
+          ],
+          "SortBy": "date",
+          "SortOrder": "DESC"
+        },
+        {
+          "VisualId": "chart-trends-by-type",
+          "Type": "PIE",
+          "Title": "Trends by Type",
+          "DatasetId": "sales-trends-dataset",
+          "Category": "trend_type",
+          "Values": [
+            {"Field": "title", "Aggregation": "COUNT"}
+          ]
+        },
+        {
+          "VisualId": "table-recommendations",
+          "Type": "TABLE",
+          "Title": "Action Recommendations",
+          "DatasetId": "sales-recommendations-dataset",
+          "Columns": [
+            {"Field": "date", "Label": "Date"},
+            {"Field": "priority", "Label": "Priority"},
+            {"Field": "category", "Label": "Category"},
+            {"Field": "title", "Label": "Recommendation"},
+            {"Field": "expected_impact", "Label": "Expected Impact"}
+          ],
+          "SortBy": "priority",
+          "SortOrder": "ASC",
+          "ConditionalFormatting": {
+            "priority": {
+              "high": "#FF4444",
+              "medium": "#FFAA00",
+              "low": "#44AA44"
+            }
+          }
+        },
+        {
+          "VisualId": "chart-recommendations-by-category",
+          "Type": "BAR",
+          "Title": "Recommendations by Category",
+          "DatasetId": "sales-recommendations-dataset",
+          "Category": "category",
+          "Values": [
+            {"Field": "title", "Aggregation": "COUNT"}
+          ],
+          "Color": "priority"
+        }
+      ]
+    }
+  ],
+  "FilterControls": [
+    {
+      "FilterId": "date-range-filter",
+      "Type": "DATE_RANGE",
+      "Title": "Date Range",
+      "SourceField": "date",
+      "AppliesTo": ["sales-store-summaries-dataset", "sales-top-products-dataset", "sales-anomalies-dataset", "sales-trends-dataset", "sales-recommendations-dataset"]
+    },
+    {
+      "FilterId": "store-filter",
+      "Type": "DROPDOWN",
+      "Title": "Store",
+      "SourceField": "store_id",
+      "AppliesTo": ["sales-store-summaries-dataset", "sales-top-products-dataset", "sales-anomalies-dataset"],
+      "MultiSelect": true
+    }
+  ],
+  "Parameters": [
+    {
+      "ParameterId": "default-date-range",
+      "Type": "DATE_RANGE",
+      "DefaultValue": {
+        "RelativeDate": "LAST_30_DAYS"
+      }
+    }
+  ]
+}

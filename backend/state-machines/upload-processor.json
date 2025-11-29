@@ -1,0 +1,181 @@
+{
+  "Comment": "Process S3 uploads: validate, convert to Parquet, calculate metrics, write to DynamoDB, check if all stores done",
+  "StartAt": "LogInput",
+  "States": {
+    "LogInput": {
+      "Type": "Pass",
+      "Parameters": {
+        "input.$": "$"
+      },
+      "ResultPath": "$.logging",
+      "Next": "ProcessUpload"
+    },
+    "ProcessUpload": {
+      "Type": "Task",
+      "Resource": "${process_upload_lambda_arn}",
+      "ResultPath": "$.processResult",
+      "Next": "CheckProcessResult",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 6,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "SendRejectionNotification"
+        }
+      ]
+    },
+    "CheckProcessResult": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.processResult.status",
+          "StringEquals": "success",
+          "Next": "CalculateMetrics"
+        }
+      ],
+      "Default": "SendRejectionNotification"
+    },
+    "SendRejectionNotification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_alerts_topic_arn}",
+        "Subject": "Sales Upload Rejected",
+        "Message.$": "States.Format('File processing failed.\n\nDetails:\n{}', States.JsonToString($.processResult))"
+      },
+      "ResultPath": "$.notificationResult",
+      "Next": "ProcessingFailed"
+    },
+    "CalculateMetrics": {
+      "Type": "Task",
+      "Resource": "${calculate_metrics_lambda_arn}",
+      "Parameters": {
+        "bucket.$": "$.processResult.bucket",
+        "key.$": "$.processResult.key",
+        "store_id.$": "$.processResult.store_id",
+        "year.$": "$.processResult.year",
+        "month.$": "$.processResult.month",
+        "day.$": "$.processResult.day"
+      },
+      "ResultPath": "$.metricsResult",
+      "Next": "WriteMetrics",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 6,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    "WriteMetrics": {
+      "Type": "Task",
+      "Resource": "${write_metrics_lambda_arn}",
+      "Parameters": {
+        "store_id.$": "$.metricsResult.store_id",
+        "date.$": "$.metricsResult.date",
+        "year.$": "$.metricsResult.year",
+        "month.$": "$.metricsResult.month",
+        "day.$": "$.metricsResult.day",
+        "metrics.$": "$.metricsResult.metrics",
+        "record_count.$": "$.metricsResult.record_count",
+        "source_key.$": "$.metricsResult.source_key"
+      },
+      "ResultPath": "$.writeResult",
+      "Next": "CheckAllStores",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 6,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    "CheckAllStores": {
+      "Type": "Task",
+      "Resource": "${check_all_stores_lambda_arn}",
+      "Parameters": {
+        "date.$": "$.metricsResult.date"
+      },
+      "ResultPath": "$.checkResult",
+      "Next": "AllStoresDone",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 6,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    "AllStoresDone": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.checkResult.all_stores_done",
+          "BooleanEquals": true,
+          "Next": "TriggerDailyAnalysis"
+        }
+      ],
+      "Default": "Success"
+    },
+    "TriggerDailyAnalysis": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::states:startExecution",
+      "Parameters": {
+        "StateMachineArn": "${daily_analysis_state_machine_arn}",
+        "Input": {
+          "date.$": "$.checkResult.date",
+          "stores_reported.$": "$.checkResult.stores_reported",
+          "triggered_by": "all_stores_uploaded"
+        }
+      },
+      "ResultPath": "$.dailyAnalysisExecution",
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "ProcessingFailed": {
+      "Type": "Fail",
+      "Error": "ProcessingFailed",
+      "Cause": "File processing failed - file was rejected"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# Build artifacts
+package/
+build/
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# Sample data
+sample-data/

@@ -1,0 +1,14 @@
+[
+  {
+    "transaction_id": "TXN-001",
+    "transaction_timestamp": "2025-01-15T09:00:00.000Z",
+    "item_sku": "SKU-001",
+    "item_name": "Test Item",
+    "quantity": 1,
+    "unit_price": 10.00,
+    "line_total": 10.00,
+    "discount_amount": 0.00,
+    "payment_method": "cash",
+    "customer_id": "CUST-001"
+  }
+]

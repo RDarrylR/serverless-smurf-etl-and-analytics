@@ -1,0 +1,421 @@
+openapi: "3.0.1"
+info:
+  title: "Sales ETL API"
+  version: "1.0"
+  description: "API for the Sales Upload and ETL project - handles file uploads, analytics, and trends"
+servers:
+  - url: "/"
+paths:
+  /generate-upload-url:
+    post:
+      summary: "Generate pre-signed URL for S3 upload"
+      responses:
+        "200":
+          description: "Success"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  uploadUrl:
+                    type: "string"
+                  key:
+                    type: "string"
+      x-amazon-apigateway-integration:
+        uri: "${lambda_invoke_arn}"
+        httpMethod: "POST"
+        type: "AWS_PROXY"
+        passthroughBehavior: "when_no_match"
+        timeoutInMillis: 29000
+        contentHandling: "CONVERT_TO_TEXT"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+    options:
+      summary: "CORS support"
+      responses:
+        "200":
+          description: "CORS headers"
+          headers:
+            Access-Control-Allow-Headers:
+              schema:
+                type: "string"
+            Access-Control-Allow-Methods:
+              schema:
+                type: "string"
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content: {}
+      x-amazon-apigateway-integration:
+        type: "mock"
+        requestTemplates:
+          application/json: "{\"statusCode\": 200}"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            responseTemplates:
+              application/json: "{}"
+  /files:
+    get:
+      summary: "List files from S3"
+      parameters:
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum: ["all", "processed", "rejected"]
+          description: "Filter by file status (processed, rejected, or all)"
+      responses:
+        "200":
+          description: "Success"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  files:
+                    type: "array"
+                    items:
+                      type: "object"
+                  count:
+                    type: "integer"
+      x-amazon-apigateway-integration:
+        uri: "${list_files_invoke_arn}"
+        httpMethod: "POST"
+        type: "AWS_PROXY"
+        passthroughBehavior: "when_no_match"
+        timeoutInMillis: 29000
+        contentHandling: "CONVERT_TO_TEXT"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+    options:
+      summary: "CORS support"
+      responses:
+        "200":
+          description: "CORS headers"
+          headers:
+            Access-Control-Allow-Headers:
+              schema:
+                type: "string"
+            Access-Control-Allow-Methods:
+              schema:
+                type: "string"
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content: {}
+      x-amazon-apigateway-integration:
+        type: "mock"
+        requestTemplates:
+          application/json: "{\"statusCode\": 200}"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            responseTemplates:
+              application/json: "{}"
+  /generate-download-url:
+    post:
+      summary: "Generate pre-signed URL for S3 download"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              required:
+                - key
+              properties:
+                key:
+                  type: "string"
+                  description: "S3 key of the file to download"
+      responses:
+        "200":
+          description: "Success"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  downloadUrl:
+                    type: "string"
+                  key:
+                    type: "string"
+                  expiresIn:
+                    type: "integer"
+      x-amazon-apigateway-integration:
+        uri: "${download_url_invoke_arn}"
+        httpMethod: "POST"
+        type: "AWS_PROXY"
+        passthroughBehavior: "when_no_match"
+        timeoutInMillis: 29000
+        contentHandling: "CONVERT_TO_TEXT"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+    options:
+      summary: "CORS support"
+      responses:
+        "200":
+          description: "CORS headers"
+          headers:
+            Access-Control-Allow-Headers:
+              schema:
+                type: "string"
+            Access-Control-Allow-Methods:
+              schema:
+                type: "string"
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content: {}
+      x-amazon-apigateway-integration:
+        type: "mock"
+        requestTemplates:
+          application/json: "{\"statusCode\": 200}"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            responseTemplates:
+              application/json: "{}"
+  /analytics:
+    get:
+      summary: "Get analytics data for dashboard"
+      parameters:
+        - name: "date"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+          description: "Date to get analytics for (YYYY-MM-DD format, defaults to latest)"
+      responses:
+        "200":
+          description: "Success"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  date:
+                    type: "string"
+                  available_dates:
+                    type: "array"
+                    items:
+                      type: "string"
+                  kpis:
+                    type: "object"
+                  stores:
+                    type: "array"
+                  top_products:
+                    type: "array"
+                  anomalies:
+                    type: "array"
+                  trends:
+                    type: "array"
+                  recommendations:
+                    type: "array"
+      x-amazon-apigateway-integration:
+        uri: "${analytics_invoke_arn}"
+        httpMethod: "POST"
+        type: "AWS_PROXY"
+        passthroughBehavior: "when_no_match"
+        timeoutInMillis: 29000
+        contentHandling: "CONVERT_TO_TEXT"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+    options:
+      summary: "CORS support"
+      responses:
+        "200":
+          description: "CORS headers"
+          headers:
+            Access-Control-Allow-Headers:
+              schema:
+                type: "string"
+            Access-Control-Allow-Methods:
+              schema:
+                type: "string"
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content: {}
+      x-amazon-apigateway-integration:
+        type: "mock"
+        requestTemplates:
+          application/json: "{\"statusCode\": 200}"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            responseTemplates:
+              application/json: "{}"
+  /trends:
+    get:
+      summary: "Get historical trends for time-series visualization"
+      parameters:
+        - name: "store_id"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+          description: "Filter by specific store ID (optional)"
+        - name: "days"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            default: 30
+          description: "Number of days of data to fetch (defaults to 30)"
+      responses:
+        "200":
+          description: "Success"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  stores:
+                    type: "array"
+                    items:
+                      type: "string"
+                  dates:
+                    type: "array"
+                    items:
+                      type: "string"
+                  time_series:
+                    type: "array"
+                  store_summaries:
+                    type: "array"
+                  days_requested:
+                    type: "integer"
+                  available_dates:
+                    type: "array"
+                    items:
+                      type: "string"
+      x-amazon-apigateway-integration:
+        uri: "${trends_invoke_arn}"
+        httpMethod: "POST"
+        type: "AWS_PROXY"
+        passthroughBehavior: "when_no_match"
+        timeoutInMillis: 29000
+        contentHandling: "CONVERT_TO_TEXT"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+    options:
+      summary: "CORS support"
+      responses:
+        "200":
+          description: "CORS headers"
+          headers:
+            Access-Control-Allow-Headers:
+              schema:
+                type: "string"
+            Access-Control-Allow-Methods:
+              schema:
+                type: "string"
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+            Access-Control-Allow-Credentials:
+              schema:
+                type: "string"
+          content: {}
+      x-amazon-apigateway-integration:
+        type: "mock"
+        requestTemplates:
+          application/json: "{\"statusCode\": 200}"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            responseTemplates:
+              application/json: "{}"

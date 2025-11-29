@@ -1,0 +1,10 @@
+# Dependencies for generate-upload-url Lambda function
+#
+# Note: boto3 and botocore are included in the AWS Lambda Python runtime
+# and do not need to be packaged with the deployment.
+#
+# If you need specific versions different from the runtime, uncomment and specify:
+# boto3>=1.34.0
+# botocore>=1.34.0
+#
+# This function has no external dependencies beyond the Lambda runtime.

@@ -1,0 +1,3 @@
+# No external dependencies required
+# boto3 is included in the Lambda Python runtime
+# aws-lambda-powertools is provided via Lambda layer

@@ -1,0 +1,60 @@
+# Example Terraform Variables
+# Copy this file to your own tfvars file and customize for your environment:
+#   cp terraform.tfvars.example myname-terraform.tfvars
+#
+# Then run terraform with:
+#   terraform plan -var-file="myname-terraform.tfvars"
+#   terraform apply -var-file="myname-terraform.tfvars"
+#
+# Note: *.tfvars files are excluded from git (except this example file)
+
+# =============================================================================
+# Required Variables
+# =============================================================================
+
+# S3 Bucket Name (base name - a random suffix will be appended automatically)
+# Must be 3-55 characters, lowercase letters, numbers, and hyphens only
+s3_bucket_name = "my-sales-uploads"
+
+# Email address for alerts and daily reports
+alert_email = "your-email@example.com"
+
+# =============================================================================
+# Optional Variables (defaults shown)
+# =============================================================================
+
+# AWS Region
+aws_region = "us-east-1"
+
+# Frontend URL for CORS configuration
+# Development: http://localhost:3000
+# Production: https://yourdomain.com
+frontend_origin = "http://localhost:3000"
+
+# S3 prefixes for file organization
+upload_prefix    = "uploads/"
+processed_prefix = "processed/"
+rejected_prefix  = "rejected/"
+
+# Expected store IDs (comma-separated)
+expected_stores = "0001,0002,0003,0004,0005,0006,0007,0008,0009,0010,0011"
+
+# Phone number for SMS alerts (optional, E.164 format)
+# alert_phone = "+15551234567"
+
+# Bedrock model for AI analysis
+bedrock_model_id = "amazon.nova-lite-v1:0"
+
+# Log level for Lambda functions (DEBUG, INFO, WARNING, ERROR)
+log_level = "INFO"
+
+# =============================================================================
+# QuickSight Configuration (Optional)
+# =============================================================================
+
+# Enable QuickSight resources (requires QuickSight Enterprise subscription)
+enable_quicksight = false
+
+# QuickSight user ARN (required if enable_quicksight is true)
+# Find your ARN: aws quicksight list-users --aws-account-id YOUR_ACCOUNT_ID --namespace default
+# quicksight_user_arn = "arn:aws:quicksight:us-east-1:123456789012:user/default/your-user"
