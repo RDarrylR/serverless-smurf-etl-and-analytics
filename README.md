@@ -409,6 +409,14 @@ Optional QuickSight adds ~$24/month for author access.
 - **No credentials in code**: All access via IAM roles
 - **Schema validation**: Rejects malformed uploads
 
+## Cleanup
+Run the following terraform command to destroy all the infrastructure.
+
+terraform destroy (from the infrastructure directory)
+
+## Read More
+This repository is associated with the following blog https://darryl-ruggles.cloud/building-a-serverless-sales-analytics-platform-with-ai-insights-for-under-10month
+
 ## License
 
 MIT License
